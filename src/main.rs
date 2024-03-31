@@ -11,6 +11,8 @@ fn handle_connection(stream: &std::net::TcpStream) -> Vec<u8> {
 
     let msg = String::from_utf8(received).unwrap();
     let path = msg.lines().nth(0).unwrap();
+    println!("hmm {:?}", path);
+
     match path {
         path if path.contains("GET") => {
             println!("OK");
