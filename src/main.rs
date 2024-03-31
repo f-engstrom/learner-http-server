@@ -1,8 +1,26 @@
 // Uncomment this block to pass the first stage
-use std::{io::Write, net::TcpListener};
+use std::{
+    io::{self, BufRead, Write},
+    net::TcpListener,
+};
 
-fn handle_connection(stream: std::net::TcpStream) {
-    unimplemented!()
+fn handle_connection(stream: &std::net::TcpStream) -> &'static [u8] {
+    let mut reader = io::BufReader::new(stream);
+    let received: Vec<u8> = reader.fill_buf().unwrap().to_vec();
+    reader.consume(received.len());
+
+    let msg = String::from_utf8(received).unwrap();
+    let path = msg.lines().nth(0).unwrap();
+    match path {
+        "GET / HTTP/1.1" => {
+            println!("OK");
+            b"HTTP/1.1 200 OK\r\n\r\n"
+        }
+        error => {
+            println!("404 {}", error);
+            b"HTTP/1.1 404 Not Found\r\n\r\n"
+        }
+    }
 }
 
 fn main() {
@@ -15,9 +33,11 @@ fn main() {
     //
     for stream in listener.incoming() {
         match stream {
-            Ok(mut _stream) => {
+            Ok(mut stream) => {
                 println!("accepted new connection");
-                let _ = _stream.write(b"HTTP/1.1 200 OK\r\n\r\n");
+                let msg = handle_connection(&stream);
+                stream.write(msg);
+                // Ok(())
             }
             Err(e) => {
                 println!("error: {}", e);
