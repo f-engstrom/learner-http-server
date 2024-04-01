@@ -1,5 +1,6 @@
 // Uncomment this block to pass the first stage
 use std::{
+    collections::HashMap,
     io::{self, BufRead, Write},
     net::TcpListener,
 };
@@ -10,7 +11,7 @@ struct Request {
     method: String,
     path: String,
     http_version: String,
-    headers: Vec<String>,
+    headers: HashMap<String, String>,
     body: Option<String>,
 }
 
@@ -18,10 +19,14 @@ fn parse_request(request: String) -> Request {
     let mut request_lines = request.lines();
     let request_line = request_lines.next().unwrap();
     let (method, path, http_version) = request_line.split_whitespace().collect_tuple().unwrap();
+    let mut headers = HashMap::new();
     for line in request_lines {
-        println!("line {}", line);
+        let header_value = line.split_once(" ");
+        if header_value.is_some() {
+            let (header, value) = header_value.unwrap();
+            headers.insert(header.to_owned(), value.to_owned());
+        }
     }
-    let headers = [String::from("hej")].to_vec();
     let req = Request {
         method: method.to_owned(),
         path: path.to_owned(),
@@ -48,6 +53,14 @@ fn handle_connection(stream: &std::net::TcpStream) -> Vec<u8> {
             let length = echo_route.len();
             println!("hmm {:?}", echo_route);
             let content = format!("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {length}\r\n\r\n{echo_route}").into_bytes();
+            content
+        }
+        path if path.contains("/user-agent") => {
+            println!("user {}", path);
+            let user_agent = req.headers.get("User-Agent:").unwrap();
+            let length = user_agent.len();
+
+            let content = format!("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {length}\r\n\r\n{user_agent}").into_bytes();
             content
         }
         path if path == "/" => b"HTTP/1.1 200 OK\r\n\r\n".to_vec(),
