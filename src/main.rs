@@ -40,21 +40,15 @@ fn handle_connection(stream: &std::net::TcpStream) -> Vec<u8> {
     println!("hmm {:?}", req.path);
 
     match req.path {
-        path if path.contains("/echo") => {
+        path if path.contains("/echo/") => {
             println!("echo");
-            let route = path
-                .split_whitespace()
-                .nth(1)
-                .unwrap()
-                .split("/")
-                .last()
-                .unwrap();
+            let route = path.split("/").last().unwrap();
             let length = route.len();
             println!("hmm {:?}", route);
             let content = format!("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {length}\r\n\r\n{route}").into_bytes();
             content
         }
-        path if path.contains("/") => b"HTTP/1.1 200 OK\r\n\r\n".to_vec(),
+        path if path == "/" => b"HTTP/1.1 200 OK\r\n\r\n".to_vec(),
         error => {
             println!("404 {}", error);
             b"HTTP/1.1 404 Not Found\r\n\r\n".to_vec()
