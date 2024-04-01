@@ -3,6 +3,7 @@ use std::{
     collections::HashMap,
     io::{self, BufRead, Write},
     net::TcpListener,
+    thread,
 };
 
 use itertools::Itertools;
@@ -83,8 +84,11 @@ fn main() {
         match stream {
             Ok(mut stream) => {
                 println!("accepted new connection");
-                let msg = handle_connection(&stream);
-                stream.write(&msg);
+                thread::spawn(move || {
+                    let msg = handle_connection(&stream);
+                    stream.write(&msg);
+                });
+
                 // Ok(())
             }
             Err(e) => {
