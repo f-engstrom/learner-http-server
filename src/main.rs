@@ -18,6 +18,9 @@ fn parse_request(request: String) -> Request {
     let mut request_lines = request.lines();
     let request_line = request_lines.next().unwrap();
     let (method, path, http_version) = request_line.split_whitespace().collect_tuple().unwrap();
+    for line in request_lines {
+        println!("line {}", line);
+    }
     let headers = [String::from("hej")].to_vec();
     let req = Request {
         method: method.to_owned(),
