@@ -41,11 +41,10 @@ fn handle_connection(stream: &std::net::TcpStream) -> Vec<u8> {
 
     match req.path {
         path if path.contains("/echo/") => {
-            println!("echo");
-            let route = path.split("/").last().unwrap();
-            let length = route.len();
-            println!("hmm {:?}", route);
-            let content = format!("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {length}\r\n\r\n{route}").into_bytes();
+            let echo_route = path.strip_prefix("/echo/").unwrap();
+            let length = echo_route.len();
+            println!("hmm {:?}", echo_route);
+            let content = format!("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {length}\r\n\r\n{echo_route}").into_bytes();
             content
         }
         path if path == "/" => b"HTTP/1.1 200 OK\r\n\r\n".to_vec(),
