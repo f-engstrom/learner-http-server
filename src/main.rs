@@ -1,6 +1,7 @@
 // Uncomment this block to pass the first stage
 use std::{
     collections::HashMap,
+    env, fs,
     io::{self, BufRead, Write},
     net::TcpListener,
     thread,
@@ -62,6 +63,44 @@ fn handle_connection(stream: &std::net::TcpStream) -> Vec<u8> {
             let length = user_agent.len();
 
             let content = format!("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {length}\r\n\r\n{user_agent}").into_bytes();
+            content
+        }
+        path if path.contains("/files") => {
+            let mut dir: String = String::new();
+            let mut args = env::args().skip(1);
+            while let Some(arg) = args.next() {
+                match &arg[..] {
+                    "--directory" => {
+                        if let Some(arg_directory) = args.next() {
+                            dir = arg_directory;
+                        } else {
+                            panic!("No value specified for parameter --directory.");
+                        }
+                    }
+                    _ => {
+                        if arg.starts_with('-') {
+                            println!("Unkown argument {}", arg);
+                        } else {
+                            println!("Unkown positional argument {}", arg);
+                        }
+                    }
+                }
+            }
+            let requested_file = path.strip_prefix("/files/").unwrap();
+            let file_path = format!("{dir}/{requested_file}");
+            println!("files {}", requested_file);
+            let mut content = b"HTTP/1.1 404 Not Found\r\n\r\n".to_vec();
+
+            match fs::read(file_path) {
+                Ok(file) => {
+                    let file_bytes = String::from_utf8_lossy(&file);
+                    let length = file_bytes.len();
+                    println!("{:?}", file_bytes);
+                    content = format!("HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: {length}\r\n\r\n{file_bytes}").into_bytes();
+                }
+                Err(_) => {}
+            };
+
             content
         }
         path if path == "/" => b"HTTP/1.1 200 OK\r\n\r\n".to_vec(),
