@@ -23,7 +23,7 @@ pub fn handle_connection(stream: &std::net::TcpStream) -> Vec<u8> {
         path if path.contains(ECHO_ROUTE) => echo_route_handler(&req),
         path if path.contains(USER_AGENT_ROUTE) => user_agent_route_handler(&req),
         path if path.contains(FILES_ROUTE) => files_route_handler(&req),
-        path if path.contains(ROOT_ROUTE) => root_route_handler(&req),
+        path if path == ROOT_ROUTE => root_route_handler(&req),
         error => {
             println!("404 {}", error);
             b"HTTP/1.1 404 Not Found\r\n\r\n".to_vec()
