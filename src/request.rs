@@ -1,6 +1,6 @@
 use crate::models;
 use itertools::Itertools;
-use models::*;
+use models::{Request, ResponseCode};
 
 use std::collections::HashMap;
 
@@ -11,17 +11,7 @@ pub fn parse_request(request: String) -> Request {
         request_line.split_whitespace().collect_tuple().unwrap();
     let mut headers = HashMap::new();
     let mut body: Option<String> = None;
-    //om tom line så börjar bodyn köra nån next() och mappa? som cmd line?
-    // for line in request_lines {
-    //     let header_value = line.split_once(" ");
-    //     if header_value.is_some() {
-    //         let (header, value) = header_value.unwrap();
-    //         //if unknown header skip and log
-    //         headers.insert(header.to_owned(), value.to_owned());
-    //     } else {
-    //         break;
-    //     }
-    // }
+
     while let Some(line) = request_lines.next() {
         if line.is_empty() {
             body = match request_lines.next() {
@@ -37,8 +27,6 @@ pub fn parse_request(request: String) -> Request {
             headers.insert(header.to_owned(), value.to_owned());
         }
     }
-    println!("{:?}", request_lines);
-    println!("{:?}", headers);
 
     let req = Request {
         method: method.to_owned(),
@@ -49,10 +37,37 @@ pub fn parse_request(request: String) -> Request {
     };
     req
 }
+
+fn headers_to_vec(headers: Vec<String>) -> Vec<u8> {
+    let mut header_string = String::new();
+    for header in headers.into_iter() {
+        let header = format!("{header}\r\n");
+        header_string.push_str(&header);
+    }
+    header_string.into()
+}
+
 pub fn build_response(
-    response_type: String,
-    headers: HashMap<String, String>,
-    body: Option<&str>,
+    response_type: ResponseCode,
+    headers: Option<Vec<String>>,
+    body: Option<Vec<u8>>,
 ) -> Vec<u8> {
-    format!("HTTP/1.1 200 OK\r\n\r\n").into_bytes()
+    let new_line: Vec<u8> = b"\r\n".to_vec();
+    let reponse_code = response_type.as_str();
+    let mut response_buffer = Vec::from(format!("HTTP/1.1 {reponse_code}"));
+    response_buffer.extend_from_slice(&new_line);
+
+    if headers.is_some() {
+        let headers = headers.unwrap();
+        response_buffer.append(&mut headers_to_vec(headers));
+    }
+
+    response_buffer.extend_from_slice(&new_line);
+
+    if body.is_some() {
+        let mut body = body.unwrap();
+        response_buffer.append(&mut body);
+    }
+
+    response_buffer
 }
