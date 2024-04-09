@@ -1,5 +1,6 @@
-use crate::models::Request;
-use std::{env, fs, str::Matches};
+use crate::{models, request::build_response};
+use models::*;
+use std::{env, fs};
 
 pub static ECHO_ROUTE: &str = "echo";
 pub fn echo_route_handler(req: &Request) -> Vec<u8> {
@@ -7,18 +8,31 @@ pub fn echo_route_handler(req: &Request) -> Vec<u8> {
     let echo_route = req.path_name.strip_prefix("/echo/").unwrap();
     let length = echo_route.len();
     println!("hmm {:?}", echo_route);
-    let content = format!("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {length}\r\n\r\n{echo_route}").into_bytes();
-    content
+
+    build_response(
+        ResponseCode::Ok,
+        Some(Vec::from([
+            ResponseHeaders::ContentType.format_header_value("text/plain"),
+            ResponseHeaders::ContentLength.format_header_value(&length.to_string()),
+        ])),
+        Some(echo_route.as_bytes().to_vec()),
+    )
 }
 
 pub static USER_AGENT_ROUTE: &str = "/user-agent";
 pub fn user_agent_route_handler(req: &Request) -> Vec<u8> {
     println!("user agent route");
-    let user_agent = req.headers.get("User-Agent:").unwrap();
+    let user_agent = req.headers.get("User-Agent:").unwrap().to_owned();
     let length = user_agent.len();
 
-    let content = format!("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {length}\r\n\r\n{user_agent}").into_bytes();
-    content
+    build_response(
+        ResponseCode::Ok,
+        Some(Vec::from([
+            ResponseHeaders::ContentType.format_header_value("text/plain"),
+            ResponseHeaders::ContentLength.format_header_value(&length.to_string()),
+        ])),
+        Some(user_agent.into_bytes()),
+    )
 }
 pub static FILES_ROUTE: &str = "files";
 pub fn files_route_handler(req: &Request) -> Vec<u8> {
@@ -48,34 +62,48 @@ pub fn files_route_handler(req: &Request) -> Vec<u8> {
     match &req.method {
         method if method.contains("GET") => {
             println!("files {}", requested_file);
-            let mut content = b"HTTP/1.1 404 Not Found\r\n\r\n".to_vec();
-
             match fs::read(file_path) {
-                Ok(file) => {
-                    let file_bytes = String::from_utf8_lossy(&file);
-                    let length = file_bytes.len();
-                    println!("{:?}", file_bytes);
-                    content = format!("HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: {length}\r\n\r\n{file_bytes}").into_bytes();
-                }
-                Err(_) => {}
-            };
-
-            content
+                Ok(file) => build_response(
+                    ResponseCode::Ok,
+                    Some(Vec::from([
+                        ResponseHeaders::ContentType
+                            .format_header_value("application/octet-stream"),
+                        ResponseHeaders::ContentLength.format_header_value(&file.len().to_string()),
+                    ])),
+                    Some(file),
+                ),
+                Err(_) => build_response(ResponseCode::NotFound, None, None),
+            }
         }
         method if method.contains("POST") => {
             println!("files post {:?}", req.body);
             let file = req.body.clone().unwrap();
 
-            fs::write(file_path, file);
-            b"HTTP/1.1 201 OK\r\n\r\n".to_vec()
+            match fs::write(file_path, file) {
+                Ok(_) => build_response(ResponseCode::Created, None, None),
+                _ => build_response(ResponseCode::InternalServerError, None, None),
+            }
         }
-        _ => b"HTTP/1.1 404 Not Found\r\n\r\n".to_vec(),
+        _ => build_response(ResponseCode::NotAllowed, None, None),
     }
 }
 
 pub static ROOT_ROUTE: &str = "/";
 pub fn root_route_handler(req: &Request) -> Vec<u8> {
     println!("root route");
+    let mut dir: String = String::from("testfiler");
+    let mut requested_file: String = String::from("index.html");
+    let file_path = format!("{dir}/{requested_file}");
 
-    b"HTTP/1.1 200 OK\r\n\r\n".to_vec()
+    match fs::read(file_path) {
+        Ok(file) => build_response(
+            ResponseCode::Ok,
+            Some(Vec::from([
+                ResponseHeaders::ContentType.format_header_value("text/html; charset=UTF-8"),
+                ResponseHeaders::ContentLength.format_header_value(&file.len().to_string()),
+            ])),
+            Some(file),
+        ),
+        Err(_) => build_response(ResponseCode::NotFound, None, None),
+    }
 }

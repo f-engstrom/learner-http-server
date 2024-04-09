@@ -4,10 +4,7 @@ use route::{
     echo_route_handler, files_route_handler, root_route_handler, user_agent_route_handler,
     ECHO_ROUTE, FILES_ROUTE, ROOT_ROUTE, USER_AGENT_ROUTE,
 };
-use std::{
-    env, fs,
-    io::{BufRead, BufReader},
-};
+use std::io::{BufRead, BufReader};
 
 pub fn handle_connection(stream: &std::net::TcpStream) -> Vec<u8> {
     let mut reader = BufReader::new(stream);
